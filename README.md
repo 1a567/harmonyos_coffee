@@ -578,3 +578,39 @@ https://kf.webxyq.com/typeProducts?appkey=U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV0
   }
 
 ```
+
+
+``` text
+["sugar", "tem", "milk","cream"]
+
+rule_obj = { }
+
+rule_obj["sugar"]
+rule_obj["tem"]
+rule_obj["cream"]
+
+{
+    sugar: {
+        desc: "糖",
+        select_idx: 0
+        arr: [全糖, 七分糖, 半糖, 无糖]
+    },
+    tem: {
+        desc: "温度",
+        select_idx: 0
+        arr: [加冰, 去冰, 热]
+    }
+}
+
+"tem": "冰",
+"tem_desc": "温度",
+---
+"milk": "",
+"milk_desc": "奶",
+---
+"sugar": "",
+"sugar_desc": "糖",
+---
+"cream": "默认奶油/无奶油",
+"cream_desc": "奶油"
+```

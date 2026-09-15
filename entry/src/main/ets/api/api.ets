@@ -62,6 +62,15 @@ let loginAccount = (loginInfo: RegistrationInfo): Promise<http.HttpResponse> =>{
   return ajax("/login", "POST", loginInfo)
 }
 
+/**
+ * 通过商品id 拉取 商品详情
+ * @param pid
+ * @returns
+ */
+let fetchProductDetailByPid = (pid:string): Promise<http.HttpResponse> =>{
+    return ajax("/productDetail", "GET", Object({ pid: pid }))
+}
+
 // 导出数据接口
 export {
   fetchBanner  // 拉取轮播图的接口
@@ -70,4 +79,5 @@ export {
   ,fetchProductListByType // 通过分类拉取商品列表
   ,registerAccount // 注册接口
   ,loginAccount // 登录接口
+  ,fetchProductDetailByPid  // 通过商品id 拉取 商品详情
 }

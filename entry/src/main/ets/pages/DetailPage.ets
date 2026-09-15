@@ -2,9 +2,15 @@ import http from '@ohos.net.http';
 
 import promptAction from '@ohos.promptAction';
 
+// 导入数据接口
+import { fetchProductDetailByPid } from '../api/api';
+// 导入数据类型约束
+import { product_detail_t, product_detail_item_t } from "../model/request"
+
 // 数据持久化
 import { PersistenceV2, Type, ConnectOptions, router } from '@kit.ArkUI';
 import { UserLoginToken } from './LoginPage';
+
 
 const APP_KEY: string = 'U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV06BeNA=';
 const BASE_URL: string = 'https://kf.webxyq.com';
@@ -24,27 +30,7 @@ interface RuleOptionItem {
   arr: string[],
 }
 
-// 商品信息结构
-export interface ProductInfo {
-  cream: string;
-  cream_desc: string;
-  desc: string;
-  enname: string;
-  is_hot: number;
-  large_img: string;
-  milk: string;
-  milk_desc: string;
-  name: string;
-  pid: string;
-  price: string;
-  small_img: string;
-  sugar: string;
-  sugar_desc: string;
-  tem: string;
-  tem_desc: string;
-  type: string;
-  type_desc: string;
-}
+
 
 
 // 后端通用响应结构
@@ -66,7 +52,7 @@ struct DetailPage {
   // pid 通过路由参数传递；商品图片使用粉色纯色盒子替代
 
   @Local pid: string = 'latte006';
-  @Local product: ProductInfo | null = null;
+  @Local product: product_detail_item_t | null = null;
   @Local isFavorite: boolean = false;
   @Local isLoading: boolean = false;
   @Local isFavOperating: boolean = false;
@@ -79,8 +65,7 @@ struct DetailPage {
 
   // 可选规格
   private rule: string[] = ["tem", "milk", "sugar", "cream"];
-  @Local rule_opt:RuleOption = {}; // 0x777abe
-
+  @Local rule_opt: RuleOption = {}; // 0x777abe
 
   async aboutToAppear() {
     // 从路由参数获取 pid
@@ -89,8 +74,10 @@ struct DetailPage {
       this.pid = params.pid;
     }
     this.tokenString = await this.readToken();
+
     // 拉取商品详情 + 收藏状态
-    await this.fetchProductDetail();
+    await this.getProductDetail();
+
     await this.fetchFavoriteStatus();
   }
 
@@ -104,52 +91,44 @@ struct DetailPage {
     }
   }
 
-  // 查询商品详情
-  private async fetchProductDetail(): Promise<void> {
-    console.log("执行了11", this.pid);
-    if (!
-  this.pid) {
-      return;
-    }
-    console.log("执行了22");
+  // 获取商品详情
+  private getProductDetail(): void {
+    // 调用数据接口 获取 商品详情
+    fetchProductDetailByPid(this.pid)
+      .then(res => {
+        // 获取到商品详情
+        let data:product_detail_t = res.result as product_detail_t;
+        console.log("获取商品详情 =>", JSON.stringify(data));
 
-    this.isLoading = true;
-    const httpReq = http.createHttp();
-    const url = `${BASE_URL}/productDetail?appkey=${APP_KEY}&pid=${this.pid}`;
-    try {
-      const resp = await httpReq.request(url, { method: http.RequestMethod.GET });
-      const data: ApiResponse<ProductInfo> = JSON.parse(resp.result as string);
-      if (data.code === 600 && data.result) {
-        const r: ProductInfo = Object(data.result)[0]; // [ {} ]
-        this.product = r;
-        console.log("商品详情 =>", JSON.stringify(r));
+        // 如果数据正常
+        if (data.code === 600 && data.result) {
+          // 商品详情的数据
+          const r: product_detail_item_t = data.result[0]; // [ {} ]
+          // 把获取到的商品详情赋值给状态变量
+          this.product = r;
 
-        //  ["sugar", "tem", "milk","cream"]
-        for(let item of this.rule){
-          // 去空
-          if(Object(r)[item]){
-            // 非空，初始化子对象
-            // this.rule_opt.sugar = { }
-            Object(this.rule_opt)[item] = {
-              // 给属性赋值
-              desc: Object(r)[item+"_desc"],
-              select_idx: 0,
-              arr:Object(r)[item].split("/"),
+          // 构建商品规格  ["sugar", "tem", "milk","cream"] = { "sugar":{描述，数组，选中下标}, ... }
+          for(let item of this.rule){
+            // 去空
+            if(Object(r)[item]){
+              // 非空，初始化子对象
+              // this.rule_opt.sugar = { }
+              Object(this.rule_opt)[item] = {
+                // 给属性赋值
+                desc: Object(r)[item+"_desc"],
+                select_idx: 0,
+                arr:Object(r)[item].split("/"),
+              }
             }
-
           }
+          // 状态不会处理深层数据的监听，即对象中的属性发生变化，这个对象不会驱动视图更新
+          let temp = JSON.stringify(this.rule_opt); // "{a:1, b:2}"
+          this.rule_opt = JSON.parse(temp);  // {a:1, b:2} 直接修改整个对象
+          console.log("规格对象",JSON.stringify(this.rule_opt));
         }
-        // 状态不会处理深层数据的监听，即对象中的属性发生变化，这个对象不会驱动视图更新
-        let temp = JSON.stringify(this.rule_opt); // "{a:1, b:2}"
-        this.rule_opt = JSON.parse(temp);  // {a:1, b:2} 直接修改整个对象
-        console.log("规格对象",JSON.stringify(this.rule_opt));
-      }
-    } catch (e) {
-      promptAction.showToast({ message: '商品详情加载失败' });
-    } finally {
-      httpReq.destroy();
-      this.isLoading = false;
-    }
+      })
+
+
   }
 
   // 查询是否已收藏
@@ -223,24 +202,23 @@ struct DetailPage {
           this.ProductInfo();
 
           // ["cream", "sugar", "tem"]
-          ForEach(Object.keys(this.rule_opt), (item:string)=>{
-              // 温度选项（子组件调用，@Prop 自动同步 selectedTemp）
-              OptionGroup({
-                label: Object(this.rule_opt)[item].desc,
-                options: Object(this.rule_opt)[item].arr,
-                selected: Object(this.rule_opt)[item].select_idx,
-                onSelect: (idx:number) => {
-                  // "this.selectedTemp" = v;
-                  Object(this.rule_opt)[item].select_idx = idx;
+          ForEach(Object.keys(this.rule_opt), (item: string) => {
+            // 温度选项（子组件调用，@Prop 自动同步 selectedTemp）
+            OptionGroup({
+              label: Object(this.rule_opt)[item].desc,
+              options: Object(this.rule_opt)[item].arr,
+              selected: Object(this.rule_opt)[item].select_idx,
+              onSelect: (idx: number) => {
+                // "this.selectedTemp" = v;
+                Object(this.rule_opt)[item].select_idx = idx;
 
-                  // 状态不会处理深层数据的监听，即对象中的属性发生变化，这个对象不会驱动视图更新
-                  let temp = JSON.stringify(this.rule_opt); // "{a:1, b:2}"
-                  this.rule_opt = JSON.parse(temp);  // {a:1, b:2} 直接修改整个对象
-                  console.log("规格对象",JSON.stringify(this.rule_opt));
-                }
-              });
+                // 状态不会处理深层数据的监听，即对象中的属性发生变化，这个对象不会驱动视图更新
+                let temp = JSON.stringify(this.rule_opt); // "{a:1, b:2}"
+                this.rule_opt = JSON.parse(temp); // {a:1, b:2} 直接修改整个对象
+                console.log("规格对象", JSON.stringify(this.rule_opt));
+              }
+            });
           })
-
 
 
           // 数量选择
@@ -496,7 +474,8 @@ struct OptionGroup {
   @Prop label: string;
   @Prop options: string[];
   @Prop selected: number;
-  onSelect: (idx:number) => void = () => { };
+  onSelect: (idx: number) => void = () => {
+  };
 
   build() {
     Row() {
@@ -506,7 +485,7 @@ struct OptionGroup {
         .width(56);
 
       Row() {
-        ForEach(this.options, (opt: string, idx:number) => {
+        ForEach(this.options, (opt: string, idx: number) => {
           Text(opt)
             .fontSize(13)
             .fontColor(idx === this.selected ? '#FFFFFF' : '#666666')

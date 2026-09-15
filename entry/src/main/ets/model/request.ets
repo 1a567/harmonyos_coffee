@@ -47,3 +47,31 @@ export interface side_menu_item_t {
     typeDesc: string;
     updatedAt: string;
 }
+
+
+export interface product_detail_t {
+    code: number;
+    msg: string;
+    result: product_detail_item_t[];
+}
+
+export interface product_detail_item_t {
+    cream: string;
+    cream_desc: string;
+    desc: string;
+    enname: string;
+    is_hot: number;
+    large_img: string;
+    milk: string;
+    milk_desc: string;
+    name: string;
+    pid: string;
+    price: string;
+    small_img: string;
+    sugar: string;
+    sugar_desc: string;
+    tem: string;
+    tem_desc: string;
+    type: string;
+    type_desc: string;
+}

@@ -15,3 +15,18 @@ export interface RegistrationInfo {
   password: string,
   nickName?:string
 }
+
+
+// 商品规格
+export interface RuleOption {
+  tem?: RuleOptionItem
+  milk?: RuleOptionItem
+  sugar?: RuleOptionItem
+  cream?: RuleOptionItem
+}
+
+interface RuleOptionItem {
+  desc: string,
+  select_idx: number,
+  arr: string[],
+}

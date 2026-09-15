@@ -6,6 +6,7 @@ import promptAction from '@ohos.promptAction';
 import { fetchProductDetailByPid } from '../api/api';
 // 导入数据类型约束
 import { product_detail_t, product_detail_item_t } from "../model/request"
+import { RuleOption } from "../model/other_t";
 
 // 数据持久化
 import { PersistenceV2, Type, ConnectOptions, router } from '@kit.ArkUI';
@@ -15,30 +16,6 @@ import { UserLoginToken } from './LoginPage';
 const APP_KEY: string = 'U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV06BeNA=';
 const BASE_URL: string = 'https://kf.webxyq.com';
 const TOKEN_KEY: string = 'tokenString';
-
-// 商品规格
-interface RuleOption {
-  tem?: RuleOptionItem
-  milk?: RuleOptionItem
-  sugar?: RuleOptionItem
-  cream?: RuleOptionItem
-}
-
-interface RuleOptionItem {
-  desc: string,
-  select_idx: number,
-  arr: string[],
-}
-
-
-
-
-// 后端通用响应结构
-interface ApiResponse<T> {
-  code: number;
-  info: string;
-  result: T;
-}
 
 
 @Entry
@@ -58,14 +35,9 @@ struct DetailPage {
   @Local isFavOperating: boolean = false;
   @Local quantity: number = 1;
   @Local tokenString: string = '';
-  // @Local selectedTemp: string = '冰';
-  // @Local selectedSugar: string = '0卡糖';
-  // private tempOptions: string[] = ['冰'];
-  // private sugarOptions: string[] = ['标准', '半糖', '0卡糖'];
-
   // 可选规格
   private rule: string[] = ["tem", "milk", "sugar", "cream"];
-  @Local rule_opt: RuleOption = {}; // 0x777abe
+  @Local rule_opt: RuleOption = {};
 
   async aboutToAppear() {
     // 从路由参数获取 pid
@@ -97,7 +69,7 @@ struct DetailPage {
     fetchProductDetailByPid(this.pid)
       .then(res => {
         // 获取到商品详情
-        let data:product_detail_t = res.result as product_detail_t;
+        let data: product_detail_t = res.result as product_detail_t;
         console.log("获取商品详情 =>", JSON.stringify(data));
 
         // 如果数据正常
@@ -108,23 +80,23 @@ struct DetailPage {
           this.product = r;
 
           // 构建商品规格  ["sugar", "tem", "milk","cream"] = { "sugar":{描述，数组，选中下标}, ... }
-          for(let item of this.rule){
+          for (let item of this.rule) {
             // 去空
-            if(Object(r)[item]){
+            if (Object(r)[item]) {
               // 非空，初始化子对象
               // this.rule_opt.sugar = { }
               Object(this.rule_opt)[item] = {
                 // 给属性赋值
-                desc: Object(r)[item+"_desc"],
+                desc: Object(r)[item + "_desc"],
                 select_idx: 0,
-                arr:Object(r)[item].split("/"),
+                arr: Object(r)[item].split("/"),
               }
             }
           }
           // 状态不会处理深层数据的监听，即对象中的属性发生变化，这个对象不会驱动视图更新
           let temp = JSON.stringify(this.rule_opt); // "{a:1, b:2}"
-          this.rule_opt = JSON.parse(temp);  // {a:1, b:2} 直接修改整个对象
-          console.log("规格对象",JSON.stringify(this.rule_opt));
+          this.rule_opt = JSON.parse(temp); // {a:1, b:2} 直接修改整个对象
+          console.log("规格对象", JSON.stringify(this.rule_opt));
         }
       })
 

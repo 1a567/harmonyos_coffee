@@ -1,5 +1,5 @@
 // 导入参数类型约束
-import { input_field_t, RegistrationInfo } from "../model/other_t"
+import { input_field_t, RegistrationInfo, UserLoginToken } from "../model/other_t"
 
 // 导入注册接口
 import { loginAccount, registerAccount } from "../api/api";
@@ -9,11 +9,7 @@ import { validateNickName, validatePassword, validatePhone } from "../utils/vali
 // 数据持久化
 import { PersistenceV2, Type, ConnectOptions,  promptAction, router } from '@kit.ArkUI';
 
-// 要存储的数据
-@ObservedV2
-export class UserLoginToken {
-  @Trace public token: string = "";
-}
+
 
 
 @Entry
@@ -21,7 +17,7 @@ export class UserLoginToken {
 struct LoginPage {
   // key不传入尝试用为type的name作为key，加密参数不传入默认加密等级为EL2
   @Local p: UserLoginToken =
-    PersistenceV2.globalConnect({ type: UserLoginToken, defaultCreator: () => new UserLoginToken() })!;
+    PersistenceV2.globalConnect({ type: UserLoginToken, key:"account_token", defaultCreator: () => new UserLoginToken() })!;
 
   @Local isShowSheet: boolean = false; // 是否显示半模态框
   @Local phoneNumber: string = ''; // 手机号

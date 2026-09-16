@@ -10,6 +10,7 @@ import {
 import {
   banner_t, banner_item_t, home_product_t, home_product_item_t
 } from "../model/request"
+import { router } from "@kit.ArkUI";
 
 // 自定义组件
 @Component
@@ -89,6 +90,10 @@ export default struct Home {
                 ForEach(child_arr, (item: home_product_item_t, index) => {
                   // 父组件传递参数product_data给子组件
                   CommodityCard({ product_data: item }) // 商品卡片 -- 自定义组件
+                    // 点击商品卡片， 跳转到详情页， 并且携带路由参数
+                    .onClick(()=>{
+                       router.pushUrl({url: "pages/DetailPage", params:{pid: item.pid}})
+                    })
                 })
               }
               .width("calc(50% - 5vp)")

@@ -197,7 +197,7 @@ https://kf.webxyq.com/typeProducts?appkey=U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV0
   请求参数： {
     pid: 商品pid,
     count: 商品数量,
-    rule: 商品规格,
+    rule: 商品规格, 
     appkey: 你的appkey,
     tokenString: token字符串
   }
@@ -212,14 +212,14 @@ https://kf.webxyq.com/typeProducts?appkey=U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV0
       sid: ''
     }
 
-  其中status = 0, 表示修改数量
-      status = 1, 添加一条新的数据
+  其中status = 0, 表示 由于有相同的商品规格，只增加该规格商品的数量
+      status = 1, 表示 由于没有相同的商品规格 添加一条新的数据到购物袋
 
   sid: 购物袋的唯一标识
 ```
 
 ```txt
-  查询购物车商品总数量接口
+  查询购物车商品总数量接口  
   请求地址：https://kf.webxyq.com/shopcartCount
   请求类型： GET
   请求参数： {
@@ -230,7 +230,7 @@ https://kf.webxyq.com/typeProducts?appkey=U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV0
 ```
 
 ```txt
-  查询用户所有购物车条数接口
+  查询用户购物车所有商品记录条数  （有几条商品记录,   比如两条商品记录，但是有5件商品）
   请求地址：https://kf.webxyq.com/findAllShopcart
   请求类型： GET
   请求参数： {

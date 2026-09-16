@@ -3,7 +3,7 @@ import ajax from "./request";
 import { http } from "@kit.NetworkKit";
 
 // 请求参数的类型约束
-import {RegistrationInfo} from "../model/other_t"
+import {RegistrationInfo, SaveShopCartProduct} from "../model/other_t"
 
 // Home页面的数据接口
 
@@ -71,13 +71,64 @@ let fetchProductDetailByPid = (pid:string): Promise<http.HttpResponse> =>{
     return ajax("/productDetail", "GET", Object({ pid: pid }))
 }
 
+
+/**
+ * 查询商品是否被收藏
+ * @param pid 商品id
+ * @param token 用户登录token
+ * @returns
+ */
+let fetchFavoriteStatus = (pid:string, token:string): Promise<http.HttpResponse> =>{
+  return ajax("/findlike", "GET", Object({ pid: pid, tokenString: token }))
+}
+
+/**
+ * 切换收藏状态的方法
+ * @param pid 商品id
+ * @param token 用户登录token
+ * @param current_state 当前商品的收藏状态，  true当前收藏  false当前未收藏
+ * @returns
+ */
+let toggleFavoriteStatus = (pid:string, token:string, current_state:boolean): Promise<http.HttpResponse> =>{
+  // 根据收藏状态决定调用哪个接口   true当前收藏则取消收藏， false当前未收藏则收藏
+  let url = current_state ? "/notlike" : "/like";
+  return ajax(url, "POST", Object({ pid: pid, tokenString: token }))
+}
+
+/**
+ * 添加商品到购物车的接口
+ * @param saveShopCartProduct
+ * @param saveShopCartProduct.pid    要添加到购物车的商品id
+ * @param saveShopCartProduct.count  商品数量
+ * @param saveShopCartProduct.rule   商品规格， 如 "冰/全糖/无奶油"
+ * @param saveShopCartProduct.tokenString  用户登录的tokne
+ * @returns 添加到购物车的状态
+ */
+let saveToShopCart = (saveShopCartProduct: SaveShopCartProduct ): Promise<http.HttpResponse> => {
+  return ajax("/addShopcart", "POST", saveShopCartProduct);
+}
+
+/**
+ * 拉取购物车所有商品的总数量
+ * @param token 用户token
+ * @returns
+ */
+let fetchShopCartCount = (token:string): Promise<http.HttpResponse> => {
+  return ajax( "/shopcartCount", "GET", Object({ tokenString: token }) );
+}
+
+
 // 导出数据接口
 export {
-  fetchBanner  // 拉取轮播图的接口
+  registerAccount // 注册接口
+  ,loginAccount // 登录接口
+  ,fetchBanner  // 拉取轮播图的接口
   ,fetchHomeProductList // 拉取商品列表
   ,fetchProductType // 拉取商品分类
   ,fetchProductListByType // 通过分类拉取商品列表
-  ,registerAccount // 注册接口
-  ,loginAccount // 登录接口
   ,fetchProductDetailByPid  // 通过商品id 拉取 商品详情
+  ,fetchFavoriteStatus // 拉取商品的收藏状态
+  ,toggleFavoriteStatus // 切换收藏状态的方法
+  ,saveToShopCart // 保存商品到购物车的方法
+  ,fetchShopCartCount // 拉取购物车所有商品的总数量
 }

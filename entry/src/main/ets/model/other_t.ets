@@ -16,7 +16,6 @@ export interface RegistrationInfo {
   nickName?:string
 }
 
-
 // 商品规格
 export interface RuleOption {
   tem?: RuleOptionItem
@@ -24,9 +23,23 @@ export interface RuleOption {
   sugar?: RuleOptionItem
   cream?: RuleOptionItem
 }
-
-interface RuleOptionItem {
+export interface RuleOptionItem {
   desc: string,
   select_idx: number,
   arr: string[],
 }
+
+// 要持久化存储的登录状态
+@ObservedV2
+export class UserLoginToken {
+  @Trace public token: string = "";
+}
+
+// 添加到购物车的商品数据
+export interface SaveShopCartProduct {
+  pid:string,
+  count:number,
+  rule:string,
+  tokenString:string
+}
+

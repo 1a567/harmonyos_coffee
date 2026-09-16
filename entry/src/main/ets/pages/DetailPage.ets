@@ -1,21 +1,16 @@
-import http from '@ohos.net.http';
-
-import promptAction from '@ohos.promptAction';
-
 // 导入数据接口
-import { fetchProductDetailByPid } from '../api/api';
+import { fetchProductDetailByPid, fetchFavoriteStatus, toggleFavoriteStatus, saveToShopCart, fetchShopCartCount } from '../api/api';
 // 导入数据类型约束
-import { product_detail_t, product_detail_item_t } from "../model/request"
-import { RuleOption } from "../model/other_t";
+import { product_detail_t, product_detail_item_t } from "../model/request";
+import { RuleOption, RuleOptionItem, UserLoginToken, SaveShopCartProduct } from "../model/other_t";
 
 // 数据持久化
-import { PersistenceV2, Type, ConnectOptions, router } from '@kit.ArkUI';
-import { UserLoginToken } from './LoginPage';
+import { PersistenceV2, Type, ConnectOptions, router, promptAction } from '@kit.ArkUI';
 
 
 const APP_KEY: string = 'U2FsdGVkX19WSQ59Cg+Fj9jNZPxRC5y0xB1iV06BeNA=';
 const BASE_URL: string = 'https://kf.webxyq.com';
-const TOKEN_KEY: string = 'tokenString';
+const TOKEN_KEY: string = 'account_token';
 
 
 @Entry
@@ -23,48 +18,45 @@ const TOKEN_KEY: string = 'tokenString';
 struct DetailPage {
   // key不传入尝试用为type的name作为key，加密参数不传入默认加密等级为EL2
   @Local p: UserLoginToken =
-    PersistenceV2.globalConnect({ type: UserLoginToken, defaultCreator: () => new UserLoginToken() })!;
+    PersistenceV2.globalConnect(
+      { type: UserLoginToken, key: "account_token", defaultCreator: () => new UserLoginToken() })!;
   // ProductDetailPage.ets
   // HarmonyOS Stage 模型商品详情页（1:1 复刻参考图设计）
   // pid 通过路由参数传递；商品图片使用粉色纯色盒子替代
 
-  @Local pid: string = 'latte006';
+  @Local pid: string = '' || "latte006";
   @Local product: product_detail_item_t | null = null;
-  @Local isFavorite: boolean = false;
-  @Local isLoading: boolean = false;
-  @Local isFavOperating: boolean = false;
-  @Local quantity: number = 1;
-  @Local tokenString: string = '';
+  @Local isLoading: boolean = false; // 是否加载完成
+  @Local isFavorite: boolean = false; // 判断商品是否被收藏
+  @Local isFavOperating: boolean = false; // 切换收藏状态时 进行 函数防抖  =>  (防抖函数/节流函数)
+  @Local isSaveToShopCarting: boolean = false; // 是否保存到购物车的过程中 进行 函数防抖  =>  (防抖函数/节流函数)
+  @Local quantity: number = 1; // 要购买的商品数量
+  @Local shop_cart_count: number = 0; // 购物袋中的商品数量
+
   // 可选规格
   private rule: string[] = ["tem", "milk", "sugar", "cream"];
   @Local rule_opt: RuleOption = {};
+  private account_token: string = ''; // 用户登录状态 有token就有登录
 
+  // 页面渲染前 触发的方法
   async aboutToAppear() {
     // 从路由参数获取 pid
     const params = router.getParams() as Record<string, string>;
     if (params && params.pid) {
       this.pid = params.pid;
     }
-    this.tokenString = await this.readToken();
-
+    // 获取登录状态
+    this.account_token = this.p.token;
     // 拉取商品详情 + 收藏状态
-    await this.getProductDetail();
+    this.getProductDetail();
 
-    await this.fetchFavoriteStatus();
-  }
 
-  // 读取本地 token（占位实现）
-  private async readToken(): Promise<string> {
-    try {
-      const token = await this.p.token;
-      return token as string;
-    } catch (e) {
-      return '';
-    }
+    this.findIsLike();
+    this.getShopCartCount();
   }
 
   // 获取商品详情
-  private getProductDetail(): void {
+  private getProductDetail() {
     // 调用数据接口 获取 商品详情
     fetchProductDetailByPid(this.pid)
       .then(res => {
@@ -103,61 +95,119 @@ struct DetailPage {
 
   }
 
-  // 查询是否已收藏
-  private async fetchFavoriteStatus(): Promise<void> {
-    if (!this.pid || !this.tokenString) {
+  // 查询商品是否已收藏
+  private findIsLike() {
+    // 如果没有登录
+    if (!this.account_token) {
       return;
     }
-    const httpReq = http.createHttp();
-    const url = `${BASE_URL}/findlike?appkey=${APP_KEY}&pid=${this.pid}&tokenString=${this.tokenString}`;
-    try {
-      const resp = await httpReq.request(url, { method: http.RequestMethod.GET });
-      console.log("111 是否收藏", resp);
-      return;
+    // Promise风格 处理网络请求的promise回调
+    fetchFavoriteStatus(this.pid, this.account_token)
+      .then(res => {
+        console.log("查看是否被收藏", JSON.stringify(res.result));
+        // 如果 res.result.result.length 长度为0， 表示这个商品没有被收藏
+        this.isFavorite = Boolean(Object(res.result).result.length);
+      })
 
-    } catch (e) {
-      // 查询失败默认未收藏
-    } finally {
-      httpReq.destroy();
-    }
+    // async/await风格 处理网络请求的promise回调
+    // let res = await findIsLike(this.pid, this.account_token);
+    // console.log("查看是否被收藏", JSON.stringify(res.result))
   }
 
   // 切换收藏状态
-  private async toggleFavorite(): Promise<void> {
+  private toggleFavorite() {
+    // 如果没有登录
+    if (!this.account_token) {
+      promptAction.openToast({ message: '请先登录' });
+      router.pushUrl({ url: "pages/LoginPage" })
+      return;
+    }
+    // 已经在切换状态中，多次点击是不会触发的
     if (this.isFavOperating) {
       return;
     }
-    if (!this.tokenString) {
-      promptAction.showToast({ message: '请先登录' });
-      return;
-    }
-    if (!this.pid) {
-      return;
-    }
+    // 当前正在切换状态中， 多次点击无效
     this.isFavOperating = true;
-    const httpReq = http.createHttp();
-    const url = this.isFavorite ? `${BASE_URL}/notlike` : `${BASE_URL}/like`;
-    try {
-      const resp = await httpReq.request(url, {
-        method: http.RequestMethod.POST,
-        header: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        extraData: `appkey=${APP_KEY}&pid=${this.pid}&tokenString=${this.tokenString}`
-      });
-      console.log("222 取消收藏", resp);
-      return;
 
-    } catch (e) {
-      promptAction.showToast({ message: '网络异常' });
-    } finally {
-      httpReq.destroy();
-      this.isFavOperating = false;
-    }
+    // 调用数据接口 切换收藏
+    toggleFavoriteStatus(this.pid, this.account_token, this.isFavorite)
+      .then(res => {
+        console.log("切换效果 =>", JSON.stringify(res.result));
+        // 800已收藏   900已取消收藏
+        if (Object(res.result).code == 800 || Object(res.result).code == 900) {
+          // 已经收藏
+          this.isFavorite = !this.isFavorite;
+        }
+      })
+      .finally(() => {
+        // 切换
+        this.isFavOperating = false;
+      })
   }
 
   // 加入购物袋
-  private onAddToBag(): void {
+  private onAddToBag() {
+    // 如果没有登录
+    if (!this.account_token) {
+      promptAction.openToast({ message: "请先登录" })
+      router.pushUrl({ url: "pages/LoginPage" });
+      return;
+    }
+    // 如果是在保存到购物车的过程中 多次点击 不会推入多次数据到服务器  避免网络问题导致重复提交
+    if(this.isSaveToShopCarting) return;
 
+    // 更新状态： 正在提交中
+    this.isSaveToShopCarting = true;
+    // 构建当前选择的商品的规格
+    // 映射： 原数组.map( (item, index)=>{return T }) :  Array<T>
+    // Object.keys(this.rule_opt) 由对象的key组成的数组
+    let rule: string = Object.keys(this.rule_opt).map((item: string) => {
+      let obj: RuleOptionItem = Object(this.rule_opt)[item];
+      return obj.arr[obj.select_idx];
+    }).join("/");
+
+    // 构建请求参数
+    let product_info: SaveShopCartProduct = {
+      rule,
+      pid: this.pid,
+      count: this.quantity,
+      tokenString: this.account_token
+    }
+    // console.log("要添加到购物车的商品数据 =>", JSON.stringify(product_info));
+
+    // 调用保存到购物袋的方法
+    saveToShopCart(product_info)
+      .then(res => {
+        console.log("添加到购物车的状态 =>", JSON.stringify(res.result));
+
+        if (Object(res.result).code === 3000) {
+          promptAction.openToast({ message: "加入购物车成功" })
+          this.shop_cart_count += this.quantity;
+        }
+      })
+      .finally(()=>{
+        // 加入购物车结束，才可以触发下一次的提交
+        this.isSaveToShopCarting = false;
+      })
   }
+
+  // 查看当前购物袋的商品总数量
+  private getShopCartCount(){
+    // 如果没有登录，看不到购物袋的商品
+    if(!this.account_token) return;
+
+    fetchShopCartCount(this.account_token)
+      .then(res=>{
+        // {"msg":"查询购物车数量成功","code":4000,"result":null}
+        // {"msg":"查询购物车数量成功","code":4000,"result":9}
+
+         if( Object(res.result).code === 4000 ){
+           // 购物袋的商品总数量 赋值给 状态变量
+           this.shop_cart_count = Object(res.result).result ?  Object(res.result).result : 0;
+         }
+      })
+  }
+
 
   build() {
     Column() {
@@ -222,7 +272,7 @@ struct DetailPage {
         .fontSize(16)
         .fontColor('#333333')
         .onClick(() => {
-          router.back();
+          router.back(); // 返回上一页
         });
 
       Blank();
@@ -383,19 +433,32 @@ struct DetailPage {
   @Builder
   BottomBar() {
     Row() {
-      // 购物袋入口
-      Column() {
-        Text('🛍')
-          .fontSize(22);
-        Text('购物袋')
-          .fontSize(11)
-          .fontColor('#666666')
-          .margin({ top: 2 });
+
+      // 徽标
+      Badge({
+        count: this.shop_cart_count,
+        style: {},
+        position: BadgePosition.RightTop,
+      }) {
+        // 购物袋入口
+        Column() {
+          Text('🛍')
+            .fontSize(22);
+          Text('购物袋')
+            .fontSize(11)
+            .fontColor('#666666')
+            .margin({ top: 2 });
+        }.alignItems(HorizontalAlign.Center)
+        .width(56)
       }
       .width(56)
-      .alignItems(HorizontalAlign.Center)
       .onClick(() => {
         // 跳转购物袋
+        router.pushUrl(
+          {
+            url:"pages/Index",
+            params:{selectedIndex: 2} // 下标， 给 index页面的tab标签使用，让它可以精确跳转到购物袋页面 而不是 home页面
+          })
       });
 
       // 收藏入口
@@ -411,6 +474,7 @@ struct DetailPage {
       .width(56)
       .alignItems(HorizontalAlign.Center)
       .onClick(() => {
+        // 切换收藏状态
         this.toggleFavorite();
       });
 
@@ -425,7 +489,7 @@ struct DetailPage {
         .borderRadius(22)
         .margin({ left: 12 })
         .onClick(() => {
-          this.onAddToBag();
+          this.onAddToBag(); // 添加到购物袋
         });
     }
     .width('100%')

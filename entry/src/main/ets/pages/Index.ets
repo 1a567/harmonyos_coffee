@@ -3,6 +3,7 @@ import Home from "../views/Home"
 import MenuPage from "../views/Menu"
 import ShopBag from "../views/ShopBag"
 import My from "../views/My"
+import { router } from "@kit.ArkUI"
 
 // 每一个tabBar的类型约束
 interface tabBarItem_t {
@@ -43,6 +44,13 @@ struct Index {
   // @State 定义状态变量: 数据变化会驱动视图更新
   @State selectedIndex:number = 0; // 当前点击的页签的索引
 
+  aboutToAppear(): void {
+    // 从路由参数获取 pid
+    const params = router.getParams() as Record<string, number>;
+    if (params && params.selectedIndex) {
+      this.selectedIndex = params.selectedIndex;
+    }
+  }
   /**
    * 局部 自定义构建函数
    * @param desc 用于构建图片和标题的 tabBarData数组项

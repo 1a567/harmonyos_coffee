@@ -9,9 +9,10 @@ import {
   side_menu_t, side_menu_item_t,
   home_product_item_t, home_product_t
 } from "../model/request"
+import { router } from "@kit.ArkUI";
 
 
-  // 自定义组件 -- MenuPage
+// 自定义组件 -- MenuPage
 @Component
   // export default  以默认导出的方式 导出组件
 export default struct MenuPage {
@@ -84,6 +85,10 @@ export default struct MenuPage {
                   ForEach(child_arr, (item: home_product_item_t, index) => {
                     // 父组件传递参数product_data给子组件
                     CommodityCard({ product_data: item }) // 商品卡片 -- 自定义组件
+                     // 点击商品卡片， 跳转到详情页， 并且携带路由参数
+                      .onClick(()=>{
+                        router.pushUrl({url: "pages/DetailPage", params:{pid: item.pid}})
+                      })
                   })
                 }
                 .width("calc(50% - 5vp)")

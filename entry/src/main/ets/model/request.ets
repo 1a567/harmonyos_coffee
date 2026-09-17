@@ -75,3 +75,31 @@ export interface product_detail_item_t {
     type: string;
     type_desc: string;
 }
+
+
+export interface find_all_shop_cart_t {
+    code: number;
+    msg: string;
+    result: find_all_shop_cart_item_t[];
+}
+
+export interface find_all_shop_cart_item_t {
+    count: number;
+    created_at: string;
+    desc: string;
+    enname: string;
+    is_hot: number;
+    is_remove: number;
+    large_img: string;
+    name: string;
+    pid: string;
+    price: string;
+    rule: string;
+    sid: string;
+    small_img: string;
+    status: number;
+    type: string;
+    type_desc: string;
+    updated_at: string;
+    user_id: string;
+}

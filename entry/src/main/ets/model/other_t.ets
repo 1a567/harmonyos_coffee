@@ -16,7 +16,7 @@ export interface RegistrationInfo {
   nickName?:string
 }
 
-// 商品规格
+// 商品规格   Record<string, Object>
 export interface RuleOption {
   tem?: RuleOptionItem
   milk?: RuleOptionItem

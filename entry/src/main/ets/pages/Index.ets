@@ -2,6 +2,7 @@
 import Home from "../views/Home"
 import MenuPage from "../views/Menu"
 import ShopBag from "../views/ShopBag"
+import ShopBagPage2 from "../views/ShopBagPage2"
 import My from "../views/My"
 import { router } from "@kit.ArkUI"
 
@@ -89,7 +90,7 @@ struct Index {
               // 支持单个子组件。
               if (index == 0) Home() // 首页
               else if(index == 1) MenuPage() // 菜单
-              else if(index == 2) ShopBag() // 购物袋
+              else if(index == 2) ShopBagPage2() // 购物袋
               else My() // 我的
             }
 

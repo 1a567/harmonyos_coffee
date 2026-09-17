@@ -117,6 +117,15 @@ let fetchShopCartCount = (token:string): Promise<http.HttpResponse> => {
   return ajax( "/shopcartCount", "GET", Object({ tokenString: token }) );
 }
 
+/**
+ * 查询用户购物车所有商品记录条数  （有几条商品记录,   比如两条商品记录，但是有5件商品）
+ * @param token 用户token
+ * @returns
+ */
+let fetchAllShopcart = (token:string): Promise<http.HttpResponse> => {
+  return ajax( "/findAllShopcart", "GET", Object({ tokenString: token }) );
+}
+
 
 // 导出数据接口
 export {
@@ -131,4 +140,5 @@ export {
   ,toggleFavoriteStatus // 切换收藏状态的方法
   ,saveToShopCart // 保存商品到购物车的方法
   ,fetchShopCartCount // 拉取购物车所有商品的总数量
+  ,fetchAllShopcart // 查询用户购物车所有商品记录条数
 }

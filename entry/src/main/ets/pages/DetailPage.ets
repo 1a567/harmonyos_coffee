@@ -387,9 +387,9 @@ struct DetailPage {
         .fontSize(18)
         .textAlign(TextAlign.Center)
         .onClick(() => {
-          if (this.quantity < 99) {
+          // if (this.quantity < 99) {
             this.quantity++;
-          }
+          // }
         });
     }
     .width('100%')

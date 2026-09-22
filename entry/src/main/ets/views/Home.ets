@@ -45,12 +45,15 @@ export default struct Home {
             .fontWeight(FontWeight.Bold)
         }
 
-        // 2. 右侧搜索框
+        // 2. 右侧搜索框（点击跳转独立搜索页）
         Search({
           placeholder: "请输入搜索关键字"
         })
         // 占剩余空间的权重
           .layoutWeight(1)
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/SearchPage' });
+          })
       }
       .width("100%")
       .backgroundColor(Color.White)

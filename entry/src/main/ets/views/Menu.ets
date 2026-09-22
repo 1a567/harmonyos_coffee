@@ -34,9 +34,12 @@ export default struct MenuPage {
   build() {
     Column() {
 
-      // 1. 顶部搜索栏
+      // 1. 顶部搜索栏（点击跳转独立搜索页）
       Search({ placeholder: "请输入搜索关键字" })
         .margin({ left: 20, right: 20, bottom: 10 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SearchPage' });
+        })
 
       // 2. 页面内容
       Row() {

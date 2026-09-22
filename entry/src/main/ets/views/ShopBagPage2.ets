@@ -63,17 +63,12 @@ export default struct ShopBag {
   // 全局状态管理连接
   @Local p: UserLoginToken =
     PersistenceV2.globalConnect({ type: UserLoginToken, key: "account_token", defaultCreator: () => new UserLoginToken() })!;
-  // 登录状态
-  private token: string = "";
+  // 登录状态（@Local 保证未登录<->已登录切换时 UI 能自动刷新）
+  @Local token: string = "";
   // 接口原始购物车商品（保留，便于其他逻辑使用）
   @Local shop_cart_goods: find_all_shop_cart_item_t[] = [];
   // 页面渲染用的购物车列表（包装类，含选中态/可变数量）
-  @Local cartList: CartGoodsItem[] = [
-    new CartGoodsItem(makeMockGoods('s1001', '1001', '满杯百香果', 'Passion Fruit & Coconut Jelly Jasmin...', '冰/标准', '17.00', 1)),
-    new CartGoodsItem(makeMockGoods('s1002', '1002', '黑糖拿铁', 'Brown Sugar Latte', '冷/半糖/无奶油', '28.00', 1)),
-    new CartGoodsItem(makeMockGoods('s1003', '1003', '奥瑞白', 'Flat White', '热/单份糖', '28.00', 3)),
-    new CartGoodsItem(makeMockGoods('s1004', '1004', '椰子冰', 'Coconut ice', '冰/无奶油', '20.00', 3))
-  ];
+  @Local cartList: CartGoodsItem[] = [];
   // 删除请求进行中标记，防止连续点击重复请求
   @Local isDeleting: boolean = false;
   // 是否处于编辑（批量删除）模式：右上角“编辑/完成”、底部“提交订单/删除选择”都由它驱动
@@ -92,54 +87,54 @@ export default struct ShopBag {
       // 顶部导航栏
       this.TopBar();
 
-      // 广告 banner（pink 纯色盒子替代）
+      // 广告 banner
       this.Banner();
 
-      // 商品列表（List 实现，ListItem 通过 swipeAction 支持左滑显示删除）
-      List({ space: 12 }) {
-        ForEach(this.cartList, (item: CartGoodsItem) => {
-          ListItem() {
-            CartItemCard({
-              item: item,
-              editMode: this.isEditMode,
-              onSelect: (sid: string) => {
-                this.toggleSelect(sid);
+      // ====== 三态分支（按参考图 1:1 复刻） ======
+      if (!this.token) {
+        // ① 未登录 → 购物车空状态（参考图 1）
+        this.EmptyLoginState();
+      } else if (this.cartList.length === 0) {
+        // ② 已登录但购物车为空
+        this.EmptyCartState();
+      } else {
+        // ③ 有商品 → 原来的列表 + 底部结算栏
+        List({ space: 12 }) {
+          ForEach(this.cartList, (item: CartGoodsItem) => {
+            ListItem() {
+              CartItemCard({
+                item: item,
+                editMode: this.isEditMode,
+                onSelect: (sid: string) => {
+                  this.toggleSelect(sid);
+                },
+                onStep: (sid: string, delta: number) => {
+                  this.stepQuantity(sid, delta);
+                }
+              });
+            }
+            .swipeAction({
+              end: {
+                builder: () => {
+                  this.DeleteButton(item.goods.sid);
+                },
               },
-              onStep: (sid: string, delta: number) => {
-                this.stepQuantity(sid, delta);
-              }
+              edgeEffect: SwipeEdgeEffect.Spring
             });
-          }
-          .swipeAction({
-            // end：左划后在 item 末尾（右侧）露出的操作区
-            end: {
-              builder: () => {
-                this.DeleteButton(item.goods.sid);
-              },
-            },
-            // 必须使用 SwipeEdgeEffect 枚举，不能写字符串 "spring"
-            edgeEffect: SwipeEdgeEffect.Spring // 滑动效果
-          });
-        }, (item: CartGoodsItem) => item.goods.sid);
-      }
-      .width('100%')
-      .layoutWeight(1)
-      .padding({ left: 12, right: 12, top: 12, bottom: 12 })
-      .scrollBar(BarState.Off)
-      .backgroundColor('#F5F6F8');
+          }, (item: CartGoodsItem) => item.goods.sid);
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .padding({ left: 12, right: 12, top: 12, bottom: 12 })
+        .scrollBar(BarState.Off)
+        .backgroundColor('#F5F6F8');
 
-      // 底部结算栏（tabBar 按要求不实现）
-      this.CheckoutBar();
+        this.CheckoutBar();
+      }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F6F8')
-    .onVisibleAreaChange([0.0, 0.01, 1.0], (isVisible: boolean, currentRatio: number) => {
-      if (isVisible && currentRatio > 0) {
-        // TODO..
-        // this.refreshCart();   // 每次切到购物袋 tab：重新取 token + 拉最新购物车
-      }
-    });
+    .backgroundColor('#F5F6F8');
   }
 
   // ============================== 数据请求 ==============================
@@ -370,31 +365,78 @@ export default struct ShopBag {
     .backgroundColor(Color.White);
   }
 
-  // 顶部 banner（pink 纯色盒子 + 文案叠加）
+  // 顶部 banner（使用用户提供的瑞幸咖啡 banner 图）
   @Builder
   Banner() {
-    Stack({ alignContent: Alignment.Start }) {
-      // pink 纯色盒子替代 banner 图片
-      Image("")
-        .width('100%')
-        .height(110)
-        .backgroundColor(Color.Pink);
+    Image($r('app.media.shopbag_banner'))
+      .width('100%')
+      .height(110)
+      .objectFit(ImageFit.Contain)
+      .alignSelf(ItemAlign.Start);
+  }
 
-      Column() {
-        Text('luckin coffee的新鲜')
-          .fontSize(19)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(Color.White);
-        Text('喝下第一口, 你就会懂')
-          .fontSize(16)
-          .fontColor(Color.White)
-          .margin({ top: 6 });
-      }
-      .alignItems(HorizontalAlign.Start)
-      .padding({ left: 20 });
+  // ====== ① 未登录空状态（复刻参考图 1:1） ======
+  // Banner 下方居中：购物袋+大叉号图标 → "请先登录" → 蓝色胶囊"去登录"按钮
+  @Builder
+  EmptyLoginState() {
+    Column() {
+      Blank();
+
+      // 居中的空状态大图标（使用用户提供的图片）
+      Image($r('app.media.shopbag_empty_icon'))
+        .width(200)
+        .height(200)
+        .objectFit(ImageFit.Contain);
+
+      Text('请先登录')
+        .fontSize(15)
+        .fontColor('#8A8F99')
+        .margin({ top: 12 });
+
+      // "去登录" 蓝色胶囊按钮
+      Button('去登录')
+        .width(132)
+        .height(44)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Color.White)
+        .backgroundColor('#1A56DB')
+        .borderRadius(22)
+        .margin({ top: 24 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/LoginPage' });
+        });
+
+      // 页面底部装饰（参考图底部那两个灰色小票+小树图标）
+      Image($r('app.media.shopbag_empty_bottom'))
+        .width(120)
+        .height(120)
+        .margin({ top: 24 });
+
+
     }
     .width('100%')
-    .height(110);
+    .layoutWeight(1)
+
+    .backgroundColor('#F5F6F8');
+  }
+
+  // ====== ② 已登录但购物车为空（兜底） ======
+  @Builder
+  EmptyCartState() {
+    Column() {
+      Blank();
+      Text('🛒')
+        .fontSize(60);
+      Text('购物车还是空的，快去选购吧~')
+        .fontSize(15)
+        .fontColor('#8A8F99')
+        .margin({ top: 12 });
+      Blank();
+    }
+    .width('100%')
+    .layoutWeight(1)
+    .backgroundColor('#F5F6F8');
   }
 
   // 底部结算栏：全选 / 合计 / 提交订单
